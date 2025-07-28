@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  This template launches an EC2 instance into a selected subnet within a given VPC.
+  It uses region-based AMI mapping to dynamically select the appropriate Ubuntu 22.04 LTS image.
+
+Mappings:
+  RegionMap:
+    us-east-1:
+      AMI: ami-080e1f13689e07408
+    us-west-2:
+      AMI: ami-0f5ee92e2d63afc18
+    eu-central-1:
+      AMI: ami-0faab6bdbac9486fb
+    ap-south-1:
+      AMI: ami-0f58b397bc5c1f2e8
+
+Parameters:
+  InstanceName:
+    Description: Name tag for the EC2 instance
+    Type: String
+
+  VPCId:
+    Description: The VPC ID where the instance will be launched
+    Type: AWS::EC2::VPC::Id
+
+  SubnetId:
+    Description: The Subnet ID where the instance will be launched (public or private)
+    Type: AWS::EC2::Subnet::Id
+
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t3.micro
+      - t3.small
+
+  KeyName:
+    Description: The EC2 KeyPair name to enable SSH access
+    Type: AWS::EC2::KeyPair::KeyName
+
+  IsPublicSubnet:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Whether the instance is in a public subnet (with public IP)
+
+Conditions:
+  IsPublic: !Equals [ !Ref IsPublicSubnet, "true" ]
+
+Resources:
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Enable SSH access
+      VpcId: !Ref VPCId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${InstanceName}-sg"
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [RegionMap, !Ref "AWS::Region", AMI]
+      SubnetId: !Ref SubnetId
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Ref InstanceName
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: 8
+            VolumeType: gp3
+            DeleteOnTermination: true
+
+Outputs:
+  InstanceId:
+    Description: EC2 Instance ID
+    Value: !Ref EC2Instance
+
+  InstancePublicIp:
+    Condition: IsPublic
+    Description: Public IP address (only if in public subnet)
+    Value: !GetAtt EC2Instance.PublicIp
+
+  InstancePrivateIp:
+    Description: Private IP address
+    Value: !GetAtt EC2Instance.PrivateIp
