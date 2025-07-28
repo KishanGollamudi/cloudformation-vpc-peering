@@ -34,3 +34,9 @@ This project automates the setup of a **complete multi-VPC network architecture*
 ✅ **Secure Access Flow**  
 - SSH into Public EC2 (Bastion) → Reach Private EC2  
 - Test private subnet connectivity and file transfers  
+
+
+
+### 🔧 Manual VPC Peering
+
+While this project leverages **AWS CloudFormation** for full automation, it's important to understand how **VPC Peering** is configured manually in the AWS Console or via CLI. Manually setting up VPC peering involves creating a peering connection between two VPCs, accepting the request from the requester/acceptor side, and updating the **route tables** in each VPC to enable private IP communication. Additionally, **security groups** must be configured to allow traffic between peered subnets. This hands-on understanding is valuable for troubleshooting or hybrid scenarios where IaC is not yet implemented. However, in this project, all these steps are declaratively handled by CloudFormation templates to ensure reproducibility and scalability.
